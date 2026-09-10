@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="ja" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keyboard Master</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&amp;display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Nunito', sans-serif; }
+    html, body { height: 100%; margin: 0; }
+
+    @keyframes popIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      70% { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    @keyframes correctFlash {
+      0% { background-color: #22c55e; transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    @keyframes wrongFlash {
+      0% { background-color: #ef4444; }
+      100% {}
+    }
+    @keyframes fadeUp {
+      0% { opacity: 0; transform: translateY(30px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    @keyframes slideDown {
+      0% { opacity: 0; transform: translateY(-20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .anim-pop { animation: popIn 0.35s ease-out forwards; }
+    .anim-shake { animation: shake 0.4s ease-in-out; }
+    .anim-correct { animation: correctFlash 0.4s ease-out forwards; }
+    .anim-wrong { animation: wrongFlash 0.4s ease-out; }
+    .anim-fade-up { animation: fadeUp 0.5s ease-out forwards; }
+    .anim-pulse { animation: pulse 1.5s ease-in-out infinite; }
+    .anim-slide-down { animation: slideDown 0.4s ease-out forwards; }
+
+    .selected-letter {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      box-shadow: 0 0 20px rgba(99,102,241,0.5);
+    }
+    .key-btn {
+      transition: all 0.15s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+    .key-btn:hover:not(.filled):not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .key-btn:active:not(.filled):not(:disabled) {
+      transform: translateY(0);
+    }
+    .filled {
+      cursor: default;
+    }
+    .timer-urgent {
+      color: #ef4444;
+      animation: pulse 0.6s ease-in-out infinite;
+    }
+    .progress-bar {
+      transition: width 0.4s ease;
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full">
+  <div id="app" class="h-full w-full overflow-auto flex flex-col items-center justify-center" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);">
+   <!-- Difficulty Selection Screen -->
+   <div id="screen-difficulty" class="flex flex-col items-center gap-6 px-4 text-center">
+    <div class="text-6xl mb-2">
+     ⌨️
+    </div>
+    <h1 id="title-text" class="text-3xl md:text-4xl font-black text-white tracking-tight">キーボードマスター</h1>
+    <p class="text-slate-400 text-sm md:text-base max-w-md">コースを選んでスタート！</p>
+    <div class="flex flex-col gap-4 w-full max-w-md"><button onclick="selectCourse('beginner')" class="flex flex-col items-start gap-2 p-6 rounded-2xl border-2 border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-400 transition-all text-left group cursor-pointer">
+      <div class="flex items-center justify-between w-full">
+       <div class="flex items-center gap-3">
+        <div class="text-3xl">
+         🟦
+        </div>
+        <div>
+         <h2 class="text-xl font-bold text-blue-300 group-hover:text-blue-200">初級コース</h2>
+         <p class="text-sm text-blue-400 group-hover:text-blue-300">キーボード位置から探す</p>
+        </div>
+       </div>
+       <div class="text-2xl group-hover:translate-x-1 transition-transform">
+        →
+       </div>
+      </div></button> <button onclick="selectCourse('advanced')" class="flex flex-col items-start gap-2 p-6 rounded-2xl border-2 border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 hover:border-purple-400 transition-all text-left group cursor-pointer">
+      <div class="flex items-center justify-between w-full">
+       <div class="flex items-center gap-3">
+        <div class="text-3xl">
+         🟪
+        </div>
+        <div>
+         <h2 class="text-xl font-bold text-purple-300 group-hover:text-purple-200">上級コース</h2>
+         <p class="text-sm text-purple-400 group-hover:text-purple-300">ヒント付きで探す</p>
+        </div>
+       </div>
+       <div class="text-2xl group-hover:translate-x-1 transition-transform">
+        →
+       </div>
+      </div></button>
+    </div>
+   </div><!-- Waiting Screen -->
+   <div id="screen-waiting" class="hidden flex-col items-center gap-6 px-4 text-center">
+    <div class="text-6xl mb-2">
+     ⌨️
+    </div>
+    <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight" id="course-title">キーボードマスター</h1>
+    <p id="course-description" class="text-slate-400 text-sm md:text-base max-w-md"></p>
+    <div id="course-rules" class="flex flex-col gap-3 text-left bg-slate-800/60 rounded-2xl p-5 border border-slate-700 text-sm text-slate-300 max-w-sm w-full">
+    </div><button id="btn-start" onclick="startGame()" class="mt-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-lg px-10 py-3.5 rounded-2xl shadow-lg shadow-indigo-500/30 transition-all hover:scale-105 active:scale-95"> スタート！ </button> <button onclick="backToDifficulty()" class="text-slate-400 hover:text-slate-300 text-sm transition-colors underline">戻る</button>
+   </div><!-- Playing Screen -->
+   <div id="screen-playing" class="hidden flex-col items-center gap-4 px-3 w-full max-w-2xl" style="display:none;">
+    <!-- HUD -->
+    <div class="w-full flex items-center justify-between bg-slate-800/70 rounded-2xl px-5 py-3 border border-slate-700 anim-slide-down">
+     <div class="flex items-center gap-2">
+      <i data-lucide="trophy" class="w-5 h-5 text-yellow-400"></i> <span class="text-white font-bold text-lg" id="hud-score">0</span> <span class="text-slate-500 text-sm">/100</span>
+     </div>
+     <div class="flex-1 mx-4 h-2.5 bg-slate-700 rounded-full overflow-hidden">
+      <div id="progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full progress-bar" style="width:0%"></div>
+     </div>
+     <div class="flex items-center gap-2">
+      <i data-lucide="timer" class="w-5 h-5 text-slate-400" id="timer-icon"></i> <span class="text-white font-bold text-lg" id="hud-timer">60</span> <span class="text-slate-500 text-sm">秒</span>
+     </div>
+    </div><!-- Advanced Course: Selected Letter Display -->
+    <div id="selected-display" class="flex flex-col items-center gap-1 my-1">
+     <span class="text-slate-500 text-xs tracking-widest uppercase">次の文字</span>
+     <div id="current-letter" class="w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center text-3xl md:text-4xl font-black text-slate-600 bg-slate-800 border-2 border-slate-700">
+      ?
+     </div>
+    </div><!-- Beginner Course: Selection Info -->
+    <div id="selection-info" class="hidden text-center text-slate-400 text-sm">
+     <p>キーボード → アルファベットの順でクリック（文字はキーを打ってもOK）</p>
+    </div><!-- Keyboard -->
+    <div id="keyboard" class="flex flex-col items-center gap-1.5 md:gap-2 w-full"></div><!-- Beginner Course: Letter Pool -->
+    <div id="letter-pool" class="hidden flex flex-wrap gap-2 justify-center w-full mt-4 px-4"></div>
+   </div><!-- Finished Screen -->
+   <div id="screen-finished" class="hidden flex-col items-center gap-5 px-4 text-center" style="display:none;">
+   </div>
+  </div>
+  <script>
+  // State
+  let status = 'waiting';
+  let score = 0;
+  let timeLeft = 60;
+  let filledKeys = { 'Q': 'Q' };
+  let remainingPool = [];
+  let selectedLetter = null;
+  let feedbackTimeout = null;
+  let timerInterval = null;
+  let currentCourse = null;
+  let selectedKeyInBeginner = null;
+
+  const KEYBOARD_ROWS = [
+    ['Q','W','E','R','T','Y','U','I','O','P'],
+    ['A','S','D','F','G','H','J','K','L'],
+    ['Z','X','C','V','B','N','M']
+  ];
+  const ALL_LETTERS = KEYBOARD_ROWS.flat();
+  const TARGET_LETTERS = ALL_LETTERS.filter(l => l !== 'Q');
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function selectCourse(course) {
+    currentCourse = course;
+    document.getElementById('screen-difficulty').style.display = 'none';
+    document.getElementById('screen-waiting').style.display = 'flex';
+
+    const title = document.getElementById('course-title');
+    const desc = document.getElementById('course-description');
+    const rules = document.getElementById('course-rules');
+
+    if (course === 'beginner') {
+      title.textContent = '初級コース';
+      desc.textContent = 'キーボードの位置をクリックして、下から対応する文字をクリック（キーを打ってもOK）！60秒で全25文字を埋められるかな？';
+      rules.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="text-green-400 font-bold">✓</span> 正解で <span class="font-bold text-white">+4点</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-yellow-400 font-bold">⏱</span> 制限時間 <span class="font-bold text-white">60秒</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-purple-400 font-bold">🎯</span> 満点は <span class="font-bold text-white">100点</span>
+        </div>
+      `;
+    } else {
+      title.textContent = '上級コース';
+      desc.textContent = '表示される文字を正しいキーの位置に配置しよう！60秒で全25文字を埋められるかな？';
+      rules.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="text-green-400 font-bold">✓</span> 正解で <span class="font-bold text-white">+4点</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-yellow-400 font-bold">⏱</span> 制限時間 <span class="font-bold text-white">60秒</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-purple-400 font-bold">🎯</span> 満点は <span class="font-bold text-white">100点</span>
+        </div>
+      `;
+    }
+  }
+
+  function backToDifficulty() {
+    status = 'waiting';
+    document.getElementById('screen-waiting').style.display = 'none';
+    document.getElementById('screen-finished').style.display = 'none';
+    document.getElementById('screen-difficulty').style.display = 'flex';
+    currentCourse = null;
+  }
+
+  function startGame() {
+    status = 'playing';
+    score = 0;
+    timeLeft = 60;
+    filledKeys = { 'Q': 'Q' };
+    remainingPool = shuffle(TARGET_LETTERS);
+    selectedLetter = currentCourse === 'advanced' ? remainingPool[0] : null;
+    selectedKeyInBeginner = null;
+
+    document.getElementById('screen-waiting').style.display = 'none';
+    document.getElementById('screen-finished').style.display = 'none';
+    document.getElementById('screen-playing').style.display = 'flex';
+
+    if (currentCourse === 'beginner') {
+      document.getElementById('selected-display').style.display = 'none';
+      document.getElementById('selection-info').style.display = 'block';
+      document.getElementById('letter-pool').style.display = 'flex';
+      renderBeginnerLetterPool();
+    } else {
+      document.getElementById('selected-display').style.display = 'flex';
+      document.getElementById('selection-info').style.display = 'none';
+      document.getElementById('letter-pool').style.display = 'none';
+      updateCurrentLetter();
+    }
+
+    renderKeyboard();
+    updateHUD();
+    lucide.createIcons();
+
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      updateHUD();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        endGame();
+      }
+    }, 1000);
+  }
+
+  function renderBeginnerLetterPool() {
+    const pool = document.getElementById('letter-pool');
+    pool.innerHTML = '';
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => l !== 'Q');
+    const shuffled = shuffle(alphabet);
+
+    shuffled.forEach((letter, idx) => {
+      const btn = document.createElement('button');
+      btn.id = `letter-${letter}`;
+      btn.dataset.letter = letter;
+      btn.className = 'px-3 py-2 md:px-4 md:py-2.5 text-sm md:text-base font-bold rounded-lg bg-slate-700/80 border border-slate-600 text-slate-300 hover:bg-slate-600 transition-all letter-btn anim-fade-up';
+      btn.textContent = letter;
+      btn.style.animationDelay = `${idx * 20}ms`;
+      btn.style.opacity = '0';
+      btn.addEventListener('click', () => handleBeginnerLetterClick(letter));
+      pool.appendChild(btn);
+    });
+  }
+
+  function handleBeginnerLetterClick(letter) {
+    if (status !== 'playing' || filledKeys[letter] || !selectedKeyInBeginner) return;
+
+    const letterBtn = document.getElementById(`letter-${letter}`);
+
+    if (letter === selectedKeyInBeginner) {
+      // Correct
+      score += 4;
+      filledKeys[letter] = letter;
+      remainingPool = remainingPool.filter(l => l !== letter);
+
+      letterBtn.className = 'px-3 py-2 md:px-4 md:py-2.5 text-sm md:text-base font-bold rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 letter-btn anim-correct';
+      letterBtn.disabled = true;
+      letterBtn.style.opacity = '1';
+
+      const keyBtn = document.getElementById(`key-${letter}`);
+      if (keyBtn) {
+        keyBtn.className = 'key-btn w-8 h-10 md:w-11 md:h-12 rounded-lg md:rounded-xl text-sm md:text-base font-bold flex items-center justify-center border filled bg-indigo-500/20 border-indigo-500/40 text-indigo-300';
+        keyBtn.textContent = letter;
+        keyBtn.disabled = true;
+        keyBtn.style.opacity = '1';
+      }
+
+      selectedKeyInBeginner = null;
+      updateHUD();
+
+      if (score >= 100) {
+        clearInterval(timerInterval);
+        endGame();
+      }
+    } else {
+      // Wrong
+      letterBtn.classList.add('anim-shake');
+      letterBtn.style.borderColor = '#ef4444';
+      setTimeout(() => {
+        letterBtn.classList.remove('anim-shake');
+        letterBtn.style.borderColor = '';
+      }, 500);
+    }
+  }
+
+  function updateHUD() {
+    document.getElementById('hud-score').textContent = score;
+    document.getElementById('hud-timer').textContent = timeLeft;
+    document.getElementById('progress-bar').style.width = `${score}%`;
+
+    const timerEl = document.getElementById('hud-timer');
+    const iconEl = document.getElementById('timer-icon');
+    if (timeLeft <= 10) {
+      timerEl.classList.add('timer-urgent');
+      if (iconEl) iconEl.style.color = '#ef4444';
+    } else {
+      timerEl.classList.remove('timer-urgent');
+      if (iconEl) iconEl.style.color = '';
+    }
+  }
+
+  function updateCurrentLetter() {
+    const el = document.getElementById('current-letter');
+    if (selectedLetter) {
+      el.textContent = selectedLetter;
+      el.className = 'w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center text-3xl md:text-4xl font-black selected-letter anim-pop';
+    } else {
+      el.textContent = '✓';
+      el.className = 'w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center text-3xl md:text-4xl font-black text-green-400 bg-slate-800 border-2 border-green-500/30';
+    }
+  }
+
+  function renderKeyboard() {
+    const kb = document.getElementById('keyboard');
+    kb.innerHTML = '';
+
+    KEYBOARD_ROWS.forEach((row, ri) => {
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'flex gap-1 md:gap-1.5 justify-center';
+
+      row.forEach((key, ki) => {
+        const btn = document.createElement('button');
+        btn.id = `key-${key}`;
+        btn.dataset.key = key;
+
+        const isFilled = !!filledKeys[key];
+        const baseClass = 'key-btn w-8 h-10 md:w-11 md:h-12 rounded-lg md:rounded-xl text-sm md:text-base font-bold flex items-center justify-center border transition-all';
+
+        if (isFilled) {
+          btn.className = `${baseClass} filled bg-indigo-500/20 border-indigo-500/40 text-indigo-300`;
+          btn.textContent = key;
+        } else if (currentCourse === 'beginner') {
+          btn.className = `${baseClass} bg-slate-700/80 border-slate-600 text-slate-500 hover:bg-slate-600 hover:border-slate-500`;
+          btn.textContent = '';
+        } else {
+          btn.className = `${baseClass} bg-slate-700/80 border-slate-600 text-slate-500 hover:bg-slate-600 hover:border-slate-500`;
+          btn.textContent = '?';
+        }
+
+        btn.style.animationDelay = `${(ri * 100) + (ki * 30)}ms`;
+        btn.style.opacity = '0';
+        btn.classList.add('anim-fade-up');
+
+        if (currentCourse === 'beginner') {
+          btn.addEventListener('click', () => handleBeginnerKeyClick(key));
+        } else {
+          btn.addEventListener('click', () => handleAdvancedKeyClick(key));
+        }
+        rowDiv.appendChild(btn);
+      });
+
+      kb.appendChild(rowDiv);
+    });
+  }
+
+  function handleBeginnerKeyClick(key) {
+    if (status !== 'playing' || filledKeys[key]) return;
+
+    const btn = document.getElementById(`key-${key}`);
+
+    if (selectedKeyInBeginner === key) {
+      // Deselect
+      selectedKeyInBeginner = null;
+      btn.style.backgroundColor = '';
+      btn.style.boxShadow = '';
+      btn.classList.remove('selected-letter');
+    } else {
+      // Select
+      if (selectedKeyInBeginner) {
+        const prevBtn = document.getElementById(`key-${selectedKeyInBeginner}`);
+        if (prevBtn) {
+          prevBtn.style.backgroundColor = '';
+          prevBtn.style.boxShadow = '';
+          prevBtn.classList.remove('selected-letter');
+        }
+      }
+      selectedKeyInBeginner = key;
+      btn.classList.add('selected-letter');
+    }
+  }
+
+  function handleAdvancedKeyClick(key) {
+    if (status !== 'playing' || filledKeys[key] || !selectedLetter) return;
+
+    const btn = document.getElementById(`key-${key}`);
+
+    if (key === selectedLetter) {
+      // Correct
+      score += 4;
+      filledKeys[key] = key;
+      remainingPool = remainingPool.filter(l => l !== selectedLetter);
+      selectedLetter = remainingPool[0] || null;
+
+      btn.textContent = key;
+      btn.className = 'key-btn w-8 h-10 md:w-11 md:h-12 rounded-lg md:rounded-xl text-sm md:text-base font-bold flex items-center justify-center border filled bg-indigo-500/20 border-indigo-500/40 text-indigo-300 anim-correct';
+      btn.style.opacity = '1';
+
+      updateHUD();
+      updateCurrentLetter();
+
+      if (score >= 100) {
+        clearInterval(timerInterval);
+        endGame();
+      }
+    } else {
+      // Wrong
+      btn.classList.add('anim-shake');
+      btn.style.borderColor = '#ef4444';
+      setTimeout(() => {
+        btn.classList.remove('anim-shake');
+        btn.style.borderColor = '';
+      }, 500);
+    }
+  }
+
+  function endGame() {
+    status = 'finished';
+    document.getElementById('screen-playing').style.display = 'none';
+
+    let tier, message, emoji, gradFrom, gradTo;
+    if (score <= 50) {
+      tier = '0～50点'; message = 'ファイトやで'; emoji = '🐧'; gradFrom = '#3b82f6'; gradTo = '#1d4ed8';
+    } else if (score <= 80) {
+      tier = '51～80点'; message = 'もうちょいやで'; emoji = '👧'; gradFrom = '#a855f7'; gradTo = '#7c3aed';
+    } else {
+      tier = '81～100点'; message = 'やったぜ！'; emoji = '🎉'; gradFrom = '#22c55e'; gradTo = '#16a34a';
+    }
+
+    const finished = document.getElementById('screen-finished');
+    finished.style.display = 'flex';
+    finished.innerHTML = `
+      <div class="anim-fade-up" style="animation-delay:0.1s;opacity:0;">
+        <div class="text-7xl mb-4">${emoji}</div>
+      </div>
+      <div class="anim-fade-up" style="animation-delay:0.25s;opacity:0;">
+        <div class="text-white font-black text-4xl md:text-5xl mb-1">${score}<span class="text-2xl md:text-3xl text-slate-400">点</span></div>
+        <div class="text-slate-500 text-sm">${tier}</div>
+      </div>
+      <div class="anim-fade-up" style="animation-delay:0.4s;opacity:0;">
+        <div class="inline-block px-6 py-3 rounded-2xl text-xl md:text-2xl font-bold text-white" style="background:linear-gradient(135deg,${gradFrom},${gradTo});">
+          ${message}
+        </div>
+      </div>
+      <div class="anim-fade-up flex flex-col gap-3 mt-4" style="animation-delay:0.55s;opacity:0;">
+        <div class="grid grid-cols-2 gap-3 text-left bg-slate-800/60 rounded-xl p-4 border border-slate-700 text-sm">
+          <div class="text-slate-500">正解数</div><div class="text-white font-bold text-right">${score / 4} / 25</div>
+          <div class="text-slate-500">残り時間</div><div class="text-white font-bold text-right">${timeLeft}秒</div>
+        </div>
+        <button onclick="startGame()" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-base px-8 py-3 rounded-2xl shadow-lg shadow-indigo-500/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i> もう一回！
+        </button>
+        <a href="index.html" class="text-slate-400 hover:text-slate-300 text-sm transition-colors underline">戻る</a>
+      </div>
+    `;
+    lucide.createIcons();
+
+    // Speech synthesis
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(message);
+      u.lang = 'ja-JP';
+      window.speechSynthesis.speak(u);
+    }
+  }
+
+  // Keyboard support
+  document.addEventListener('keydown', (e) => {
+    const key = e.key.toUpperCase();
+    if (ALL_LETTERS.includes(key) && status === 'playing') {
+      if (currentCourse === 'beginner') {
+        // 位置を選んだ後に打った文字は解答として判定する
+        if (selectedKeyInBeginner) {
+          handleBeginnerLetterClick(key);
+        } else {
+          handleBeginnerKeyClick(key);
+        }
+      } else {
+        handleAdvancedKeyClick(key);
+      }
+    }
+  });
+
+  lucide.createIcons();
+  </script>
+ </body>
+</html>
